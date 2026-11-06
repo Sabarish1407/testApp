@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -24,7 +22,7 @@ public class OrderController {
 
     @PostMapping("/total")
     public ResponseEntity<OrderResponse> calculateTotal(@Valid @RequestBody Order order) {
-        BigDecimal total = orderService.calculateTotal(order);
-        return ResponseEntity.ok(new OrderResponse(total));
+        OrderResponse response = orderService.calculatePricing(order);
+        return ResponseEntity.ok(response);
     }
 }

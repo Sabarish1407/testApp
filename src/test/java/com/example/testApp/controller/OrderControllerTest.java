@@ -1,5 +1,6 @@
 package com.example.testApp.controller;
 
+import com.example.testApp.dto.OrderResponse;
 import com.example.testApp.model.CustomerTier;
 import com.example.testApp.model.Order;
 import com.example.testApp.model.OrderItem;
@@ -40,12 +41,21 @@ class OrderControllerTest {
         OrderItem item = new OrderItem("SKU-1", new BigDecimal("25.00"), 2);
         Order order = new Order("ord-1", "cust-1", List.of(item), CustomerTier.STANDARD);
 
-        when(orderService.calculateTotal(any(Order.class))).thenReturn(new BigDecimal("50.00"));
+        OrderResponse expectedResponse = new OrderResponse(
+                new BigDecimal("50.00"),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                new BigDecimal("50.00")
+        );
+        when(orderService.calculatePricing(any(Order.class))).thenReturn(expectedResponse);
 
         mockMvc.perform(post("/api/orders/total")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subtotal").value(50.00))
+                .andExpect(jsonPath("$.discountAmount").value(0.00))
+                .andExpect(jsonPath("$.promoAmount").value(0.00))
                 .andExpect(jsonPath("$.total").value(50.00));
     }
 
@@ -97,7 +107,7 @@ class OrderControllerTest {
         OrderItem item = new OrderItem("SKU-1", new BigDecimal("25.00"), 1);
         Order order = new Order("ord-5", "cust-5", List.of(item), CustomerTier.STANDARD);
 
-        when(orderService.calculateTotal(any(Order.class)))
+        when(orderService.calculatePricing(any(Order.class)))
                 .thenThrow(new IllegalArgumentException("Unit price must not be negative"));
 
         mockMvc.perform(post("/api/orders/total")

@@ -1,16 +1,44 @@
 package com.example.testApp.service;
 
+import com.example.testApp.dto.OrderResponse;
+import com.example.testApp.exception.UnprocessableEntityException;
 import com.example.testApp.model.Order;
 import com.example.testApp.model.OrderItem;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.Objects;
 
 @Service
 public class OrderService {
 
+    private final DiscountService discountService;
+
+    public OrderService() {
+        this.discountService = new DiscountService(new PromoCodeValidator());
+    }
+
+    public OrderService(DiscountService discountService) {
+        this.discountService = discountService;
+    }
+
+    public OrderResponse calculatePricing(Order order) {
+        validateOrder(order);
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (OrderItem item : order.getItems()) {
+            BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            subtotal = subtotal.add(itemTotal);
+        }
+
+        return discountService.applyDiscounts(order, subtotal);
+    }
+
     public BigDecimal calculateTotal(Order order) {
+        return calculatePricing(order).getTotal();
+    }
+
+    private void validateOrder(Order order) {
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
         }
@@ -18,7 +46,6 @@ public class OrderService {
             throw new IllegalArgumentException("Order items must not be empty");
         }
 
-        BigDecimal total = BigDecimal.ZERO;
         for (OrderItem item : order.getItems()) {
             if (item == null) {
                 throw new IllegalArgumentException("Order item must not be null");
@@ -29,10 +56,15 @@ public class OrderService {
             if (item.getQuantity() < 1) {
                 throw new IllegalArgumentException("Quantity must be at least 1");
             }
-            BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            total = total.add(itemTotal);
         }
 
-        return total.setScale(2, RoundingMode.HALF_UP);
+        long distinctItemsCount = order.getItems().stream()
+                .map(OrderItem::getSku)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        if (distinctItemsCount > 50) {
+            throw new UnprocessableEntityException("Order cannot contain more than 50 distinct items");
+        }
     }
 }
