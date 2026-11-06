@@ -1,9 +1,9 @@
 package com.example.testApp.model;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -20,6 +20,10 @@ public class Order {
     @NotNull(message = "Customer tier must not be null")
     private CustomerTier customerTier;
 
+    private String promoCode;
+
+    private boolean promoApplied;
+
     public Order() {
     }
 
@@ -28,6 +32,14 @@ public class Order {
         this.customerId = customerId;
         this.items = items;
         this.customerTier = customerTier;
+    }
+
+    public Order(String id, String customerId, List<OrderItem> items, CustomerTier customerTier, String promoCode) {
+        this.id = id;
+        this.customerId = customerId;
+        this.items = items;
+        this.customerTier = customerTier;
+        this.promoCode = promoCode;
     }
 
     public String getId() {
@@ -60,5 +72,21 @@ public class Order {
 
     public void setCustomerTier(CustomerTier customerTier) {
         this.customerTier = customerTier;
+    }
+
+    public String getPromoCode() {
+        return promoCode;
+    }
+
+    public void setPromoCode(String promoCode) {
+        this.promoCode = promoCode;
+    }
+
+    public boolean isPromoApplied() {
+        return promoApplied;
+    }
+
+    public void setPromoApplied(boolean promoApplied) {
+        this.promoApplied = promoApplied;
     }
 }
