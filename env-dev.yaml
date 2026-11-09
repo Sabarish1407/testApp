@@ -1,0 +1,49 @@
+# ==============================================================================
+# Environment Configuration: Development (dev)
+# Target environment for neuro-Deploy automated deployments
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+  namespace: dev
+  labels:
+    app: customer-service
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: customer-service
+        environment: dev
+    spec:
+      containers:
+        - name: customer-service
+          # neuro-Deploy updates image name and tag below:
+          image: customer-service:1.0.0-b9f2c81d
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+            - name: SERVER_PORT
+              value: "8080"
+            # Optional debug and metrics settings
+            # - name: DEBUG_LOGGING_ENABLED
+            #   value: "true"
+            # - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+            #   value: "health,info,metrics"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
