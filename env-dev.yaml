@@ -25,7 +25,7 @@ spec:
       containers:
         - name: customer-service
           # neuro-Deploy updates image name and tag below:
-          image: customer-service:1.0.0-ec86c274
+          image: customer-service:1.0.0-245ed03d
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
