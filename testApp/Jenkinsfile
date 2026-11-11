@@ -334,13 +334,19 @@ pipeline {
                         }
 
                         echo "Target remote URL: ${remoteUrl}"
+                        def ghOwner = ""
+                        def ghRepo = ""
                         def repoMatcher = (remoteUrl =~ /(?:github\.com[\/:])([^\/]+)\/([^\/\.]+)/)
-                        if (!repoMatcher.find()) {
+                        if (repoMatcher.find()) {
+                            ghOwner = repoMatcher.group(1)
+                            ghRepo = repoMatcher.group(2)
+                        }
+                        repoMatcher = null // Avoid CPS NotSerializableException
+
+                        if (!ghOwner || !ghRepo) {
                             echo "Warning: Could not parse GitHub owner/repo from remote URL '${remoteUrl}'."
                             return
                         }
-                        def ghOwner = repoMatcher.group(1)
-                        def ghRepo = repoMatcher.group(2)
                         echo "GitHub Target Repository: ${ghOwner}/${ghRepo}"
 
                         // 3. Prepare PR metadata
@@ -386,11 +392,17 @@ pipeline {
                                 }
 
                                 if (response.contains('"html_url"')) {
+                                    def prHtmlUrl = ""
                                     def urlMatcher = (response =~ /"html_url":\s*"([^"]+)"/)
                                     if (urlMatcher.find()) {
+                                        prHtmlUrl = urlMatcher.group(1)
+                                    }
+                                    urlMatcher = null // Avoid CPS NotSerializableException
+
+                                    if (prHtmlUrl) {
                                         echo "=========================================================="
                                         echo ">>> GitHub Pull Request successfully created:"
-                                        echo ">>> ${urlMatcher.group(1)}"
+                                        echo ">>> ${prHtmlUrl}"
                                         echo "=========================================================="
                                     } else {
                                         echo "Pull Request created successfully! Response: ${response}"
