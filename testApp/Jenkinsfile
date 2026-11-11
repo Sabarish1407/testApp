@@ -287,15 +287,19 @@ pipeline {
         stage('Create GitHub Pull Request') {
             when {
                 expression { 
-                    return env.CREATE_PULL_REQUEST == 'true' || params.CREATE_PULL_REQUEST == true 
+                    // Multibranch pipeline automatically populates env.BRANCH_NAME
+                    def currentBranch = (env.BRANCH_NAME ?: params.SOURCE_BRANCH ?: '').trim()
+                    def isPrEnabled = (env.CREATE_PULL_REQUEST == 'true' || params.CREATE_PULL_REQUEST == true)
+                    def isNotTargetBranch = (currentBranch != '' && currentBranch != env.TARGET_BRANCH && currentBranch != 'main')
+                    return isPrEnabled && isNotTargetBranch
                 }
             }
             steps {
                 script {
                     def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
                     dir(workDir) {
-                        // 1. Detect branch name
-                        def srcBranch = (params.SOURCE_BRANCH ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: '').trim()
+                        // 1. Detect branch name (Multibranch Pipeline provides env.BRANCH_NAME)
+                        def srcBranch = (env.BRANCH_NAME ?: params.SOURCE_BRANCH ?: env.GIT_BRANCH ?: '').trim()
                         if (!srcBranch) {
                             try {
                                 if (isUnix()) {
