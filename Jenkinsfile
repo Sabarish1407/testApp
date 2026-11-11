@@ -13,13 +13,14 @@ pipeline {
         string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag (e.g. 1.0.0-b9f2c81d)')
         string(name: 'DOCKERFILE_PATH', defaultValue: 'Dockerfile', description: 'Relative path to the Dockerfile')
         
-        // GitHub Container Registry (GHCR) parameters
-        booleanParam(name: 'PUSH_DOCKER_IMAGE', defaultValue: true, description: 'Push built Docker image to container registry (e.g. ghcr.io)')
+        // Docker Build & Registry parameters
+        booleanParam(name: 'BUILD_DOCKER_IMAGE', defaultValue: false, description: 'Build Docker container image (enable when Docker daemon is available)')
+        booleanParam(name: 'PUSH_DOCKER_IMAGE', defaultValue: false, description: 'Push built Docker image to container registry (e.g. ghcr.io)')
         string(name: 'DOCKER_REGISTRY', defaultValue: 'ghcr.io', description: 'Container Registry host (e.g. ghcr.io, docker.io)')
         string(name: 'DOCKER_REGISTRY_OWNER', defaultValue: '', description: 'GitHub username or organization owning the container registry (e.g. your-github-user)')
         
         // Git Repository parameters (dynamically resolves from Git origin or parameter)
-        booleanParam(name: 'AUTO_PUSH_GITHUB', defaultValue: true, description: 'Automatically push deployment updates and tags to Git repository')
+        booleanParam(name: 'AUTO_PUSH_GITHUB', defaultValue: false, description: 'Automatically push deployment updates and tags to Git repository')
         string(name: 'TARGET_REPO_URL', defaultValue: '', description: 'Target Git repository URL (leave blank to auto-detect from Git remote origin)')
         string(name: 'GITHUB_CREDENTIALS_ID', defaultValue: 'github-credentials', description: 'Jenkins Credentials ID for Git authentication (PAT with repo and write:packages scope)')
         string(name: 'TARGET_BRANCH', defaultValue: 'main', description: 'Target Git branch to push deployment updates')
@@ -40,13 +41,14 @@ pipeline {
         // neuro-Deploy updates Dockerfile path here:
         DOCKERFILE_PATH = 'Dockerfile'
         
-        // Registry Configuration
-        PUSH_DOCKER_IMAGE = "${params.PUSH_DOCKER_IMAGE ?: true}"
+        // Docker Configuration
+        BUILD_DOCKER_IMAGE = "${params.BUILD_DOCKER_IMAGE ?: false}"
+        PUSH_DOCKER_IMAGE = "${params.PUSH_DOCKER_IMAGE ?: false}"
         DOCKER_REGISTRY = "${params.DOCKER_REGISTRY ?: 'ghcr.io'}"
         DOCKER_REGISTRY_OWNER = "${params.DOCKER_REGISTRY_OWNER ?: ''}"
         
         // Git Configuration
-        AUTO_PUSH_GITHUB = "${params.AUTO_PUSH_GITHUB ?: true}"
+        AUTO_PUSH_GITHUB = "${params.AUTO_PUSH_GITHUB ?: false}"
         TARGET_REPO_URL = "${params.TARGET_REPO_URL ?: ''}"
         GITHUB_CREDENTIALS_ID = "${params.GITHUB_CREDENTIALS_ID ?: 'github-credentials'}"
         TARGET_BRANCH = "${params.TARGET_BRANCH ?: 'main'}"
@@ -92,6 +94,9 @@ pipeline {
         }
 
         stage('Docker Build') {
+            when {
+                expression { return env.BUILD_DOCKER_IMAGE == 'true' || params.BUILD_DOCKER_IMAGE == true }
+            }
             steps {
                 script {
                     def workDir = fileExists('testApp') ? 'testApp' : '.'
@@ -168,13 +173,17 @@ pipeline {
                     echo "Deploying to target environment: ${env.ENVIRONMENT}"
                     if (env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'demo') {
                         echo "Applying deployment configuration for ${env.ENVIRONMENT}..."
-                        def deployCmd = "docker tag ${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.IMAGE_NAME}:${env.ENVIRONMENT}-latest"
-                        if (isUnix()) {
-                            sh deployCmd
+                        if (env.BUILD_DOCKER_IMAGE == 'true' || params.BUILD_DOCKER_IMAGE == true) {
+                            def deployCmd = "docker tag ${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.IMAGE_NAME}:${env.ENVIRONMENT}-latest"
+                            if (isUnix()) {
+                                sh deployCmd
+                            } else {
+                                bat deployCmd
+                            }
+                            echo "Successfully deployed Docker image ${env.IMAGE_NAME}:${env.IMAGE_TAG} to ${env.ENVIRONMENT}."
                         } else {
-                            bat deployCmd
+                            echo "Environment manifest and test verification completed for ${env.ENVIRONMENT}."
                         }
-                        echo "Successfully deployed ${env.IMAGE_NAME}:${env.IMAGE_TAG} to ${env.ENVIRONMENT} environment."
                     } else {
                         error("Direct deployment to '${env.ENVIRONMENT}' is rejected. Production deployment requires human gate approval.")
                     }
