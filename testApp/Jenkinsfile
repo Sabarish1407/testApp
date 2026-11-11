@@ -66,7 +66,7 @@ pipeline {
         stage('Build & Test') {
             steps {
                 script {
-                    def workDir = fileExists('testApp') ? 'testApp' : '.'
+                    def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
                     dir(workDir) {
                         echo "Building application with Maven inside directory '${workDir}'..."
                         if (isUnix()) {
@@ -77,7 +77,7 @@ pipeline {
                             }
                         } else {
                             if (fileExists('mvnw.cmd')) {
-                                bat 'mvnw.cmd clean install'
+                                bat 'call mvnw.cmd clean install'
                             } else {
                                 bat 'mvn clean install'
                             }
@@ -99,7 +99,7 @@ pipeline {
             }
             steps {
                 script {
-                    def workDir = fileExists('testApp') ? 'testApp' : '.'
+                    def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
                     dir(workDir) {
                         echo "Building local Docker image ${env.IMAGE_NAME}:${env.IMAGE_TAG} using Dockerfile at '${env.DOCKERFILE_PATH}'..."
                         def buildCmd = "docker build -t ${env.IMAGE_NAME}:${env.IMAGE_TAG} -f ${env.DOCKERFILE_PATH} ."
@@ -197,7 +197,7 @@ pipeline {
             }
             steps {
                 script {
-                    def workDir = fileExists('testApp') ? 'testApp' : '.'
+                    def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
                     dir(workDir) {
                         // 1. Detect target Git remote URL dynamically
                         def remoteUrl = env.TARGET_REPO_URL ? env.TARGET_REPO_URL.trim() : ""
@@ -292,7 +292,7 @@ pipeline {
             }
             steps {
                 script {
-                    def workDir = fileExists('testApp') ? 'testApp' : '.'
+                    def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
                     dir(workDir) {
                         // 1. Detect branch name
                         def srcBranch = (params.SOURCE_BRANCH ?: env.BRANCH_NAME ?: env.GIT_BRANCH ?: '').trim()
