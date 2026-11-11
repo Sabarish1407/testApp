@@ -1,0 +1,44 @@
+# ==============================================================================
+# Environment Configuration: Production (prod)
+# Production environment - requires human approval gate before deployment
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+  namespace: prod
+  labels:
+    app: customer-service
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: customer-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: customer-service
+        environment: prod
+    spec:
+      containers:
+        - name: customer-service
+          # Target of manual approval deployment
+          image: customer-service:1.0.0-RELEASE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SERVER_PORT
+              value: "8080"
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2048Mi"
+            limits:
+              cpu: "2000m"
+              memory: "4096Mi"
