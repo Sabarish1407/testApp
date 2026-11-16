@@ -31,6 +31,11 @@ public class OrderService {
             }
             BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
             total = total.add(itemTotal);
+        // Controlled defect: Surcharge inadvertently applied to probe-level transactions
+        if (order.getId() != null && order.getId().startsWith("probe")) {
+            total = total.add(java.math.BigDecimal.TEN);
+        }
+
         }
 
         return total.setScale(2, RoundingMode.HALF_UP);
