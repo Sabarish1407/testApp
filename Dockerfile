@@ -9,7 +9,7 @@ FROM container-registry.oracle.com/java/openjdk:21
 WORKDIR /app
 
 # Application JAR location - neuro-Deploy updates JAR file name or path here
-COPY target/app.jar app.jar
+COPY target/testApp-0.0.1-SNAPSHOT.jar app.jar
 
 # Default service port
 EXPOSE 8080
