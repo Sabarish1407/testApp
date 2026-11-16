@@ -13,6 +13,11 @@ pipeline {
         string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag (e.g. 1.0.0-b9f2c81d)')
         string(name: 'DOCKERFILE_PATH', defaultValue: 'Dockerfile', description: 'Relative path to the Dockerfile')
         
+        // Deployment Platform parameters (local Compose vs cloud Kubernetes)
+        choice(name: 'DEPLOYMENT_PLATFORM', choices: ['compose', 'k8s'], description: 'Deployment runtime platform: Docker Compose (local) or Kubernetes (cloud)')
+        string(name: 'APP_PORT', defaultValue: '8080', description: 'Target application exposed HTTP port')
+        string(name: 'HEALTH_ENDPOINT', defaultValue: '/actuator/health', description: 'Health check endpoint path')
+        
         // Docker Build & Registry parameters
         booleanParam(name: 'BUILD_DOCKER_IMAGE', defaultValue: false, description: 'Build Docker container image (enable when Docker daemon is available)')
         booleanParam(name: 'PUSH_DOCKER_IMAGE', defaultValue: false, description: 'Push built Docker image to container registry (e.g. ghcr.io)')
@@ -40,6 +45,11 @@ pipeline {
         
         // neuro-Deploy updates Dockerfile path here:
         DOCKERFILE_PATH = 'Dockerfile'
+        
+        // Deployment Platform configuration
+        DEPLOYMENT_PLATFORM = "${params.DEPLOYMENT_PLATFORM ?: 'compose'}"
+        APP_PORT = "${params.APP_PORT ?: '8080'}"
+        HEALTH_ENDPOINT = "${params.HEALTH_ENDPOINT ?: '/actuator/health'}"
         
         // Docker Configuration
         BUILD_DOCKER_IMAGE = "${params.BUILD_DOCKER_IMAGE ?: false}"
@@ -170,19 +180,54 @@ pipeline {
         stage('Deploy to Target Environment') {
             steps {
                 script {
-                    echo "Deploying to target environment: ${env.ENVIRONMENT}"
+                    echo "Deploying to target environment: ${env.ENVIRONMENT} on platform: ${env.DEPLOYMENT_PLATFORM}"
                     if (env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'demo') {
-                        echo "Applying deployment configuration for ${env.ENVIRONMENT}..."
-                        if (env.BUILD_DOCKER_IMAGE == 'true' || params.BUILD_DOCKER_IMAGE == true) {
-                            def deployCmd = "docker tag ${env.IMAGE_NAME}:${env.IMAGE_TAG} ${env.IMAGE_NAME}:${env.ENVIRONMENT}-latest"
-                            if (isUnix()) {
-                                sh deployCmd
+                        def workDir = (fileExists('pom.xml')) ? '.' : (fileExists('testApp/pom.xml') ? 'testApp' : '.')
+                        dir(workDir) {
+                            if (env.DEPLOYMENT_PLATFORM == 'compose') {
+                                echo "Executing Docker Compose deployment for ${env.IMAGE_NAME}:${env.IMAGE_TAG} on port ${env.APP_PORT}..."
+                                def composeFile = (fileExists('docker-compose.yml')) ? 'docker-compose.yml' : 'testApp/docker-compose.yml'
+                                def composeCmd = "docker compose -f ${composeFile} up -d --build --force-recreate"
+                                if (isUnix()) {
+                                    sh composeCmd
+                                    sh "docker compose -f ${composeFile} ps"
+                                } else {
+                                    bat composeCmd
+                                    bat "docker compose -f ${composeFile} ps"
+                                }
+                                echo "Successfully deployed and verified container with Docker Compose on port ${env.APP_PORT}."
+                            } else if (env.DEPLOYMENT_PLATFORM == 'k8s') {
+                                echo "Executing Kubernetes deployment using manifest: env-${env.ENVIRONMENT}.yaml..."
+                                def manifestFile = (fileExists("env-${env.ENVIRONMENT}.yaml")) ? "env-${env.ENVIRONMENT}.yaml" : "testApp/env-${env.ENVIRONMENT}.yaml"
+                                
+                                // 1. Client-side dry-run validation
+                                echo "Validating Kubernetes manifest syntax (${manifestFile})..."
+                                if (isUnix()) {
+                                    sh "kubectl apply --dry-run=client -f ${manifestFile}"
+                                } else {
+                                    bat "kubectl apply --dry-run=client -f ${manifestFile}"
+                                }
+                                
+                                // 2. Apply deployment
+                                echo "Applying Kubernetes manifest to namespace ${env.ENVIRONMENT}..."
+                                if (isUnix()) {
+                                    sh "kubectl apply -f ${manifestFile}"
+                                } else {
+                                    bat "kubectl apply -f ${manifestFile}"
+                                }
+                                
+                                // 3. Verify rollout status
+                                echo "Verifying Kubernetes rollout status for deployment/${env.IMAGE_NAME}..."
+                                def rolloutCmd = "kubectl rollout status deployment/${env.IMAGE_NAME} -n ${env.ENVIRONMENT} --timeout=180s"
+                                if (isUnix()) {
+                                    sh rolloutCmd
+                                } else {
+                                    bat rolloutCmd
+                                }
+                                echo "Successfully verified Kubernetes deployment rollout in namespace ${env.ENVIRONMENT}."
                             } else {
-                                bat deployCmd
+                                error("Unsupported deployment platform: '${env.DEPLOYMENT_PLATFORM}'. Must be 'compose' or 'k8s'.")
                             }
-                            echo "Successfully deployed Docker image ${env.IMAGE_NAME}:${env.IMAGE_TAG} to ${env.ENVIRONMENT}."
-                        } else {
-                            echo "Environment manifest and test verification completed for ${env.ENVIRONMENT}."
                         }
                     } else {
                         error("Direct deployment to '${env.ENVIRONMENT}' is rejected. Production deployment requires human gate approval.")

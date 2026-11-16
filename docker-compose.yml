@@ -1,0 +1,16 @@
+services:
+  testApp:
+    image: ${IMAGE_NAME:-customer-service}:${IMAGE_TAG:-latest}
+    container_name: customer-service-app
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${ENVIRONMENT:-dev}
+      - SERVER_PORT=8080
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
