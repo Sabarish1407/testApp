@@ -12,6 +12,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Disabled;
 
 class NeuroE2E_OrderControllerTest {
 
@@ -240,6 +241,7 @@ class NeuroE2E_OrderControllerTest {
         assertThat(new java.math.BigDecimal(String.valueOf(com.jayway.jsonpath.JsonPath.<Object>read(response0.body(), "$.total")))).as("total").isEqualByComparingTo("150.00");
     }
 
+    @Disabled("Quarantined by Central Neuro: a model-written test that disagrees with the application, a person must decide whether the test or the code is wrong. [promoAmount] expected: 20.00 but was: 0.0")
     @Test
     @Tag("neuro-e2e")
     @Tag("neuro-post-deploy")
