@@ -20,6 +20,8 @@ public class Order {
     @NotNull(message = "Customer tier must not be null")
     private CustomerTier customerTier;
 
+    private String promoCode;
+
     public Order() {
     }
 
@@ -28,6 +30,14 @@ public class Order {
         this.customerId = customerId;
         this.items = items;
         this.customerTier = customerTier;
+    }
+
+    public Order(String id, String customerId, List<OrderItem> items, CustomerTier customerTier, String promoCode) {
+        this.id = id;
+        this.customerId = customerId;
+        this.items = items;
+        this.customerTier = customerTier;
+        this.promoCode = promoCode;
     }
 
     public String getId() {
@@ -60,5 +70,13 @@ public class Order {
 
     public void setCustomerTier(CustomerTier customerTier) {
         this.customerTier = customerTier;
+    }
+
+    public String getPromoCode() {
+        return promoCode;
+    }
+
+    public void setPromoCode(String promoCode) {
+        this.promoCode = promoCode;
     }
 }
