@@ -25,6 +25,10 @@ public class OrderController {
     @PostMapping("/total")
     public ResponseEntity<OrderResponse> calculateTotal(@Valid @RequestBody Order order) {
         BigDecimal total = orderService.calculateTotal(order);
+        OrderResponse breakdown = orderService.calculateOrderResponse(order);
+        if (breakdown != null) {
+            return ResponseEntity.ok(breakdown);
+        }
         return ResponseEntity.ok(new OrderResponse(total));
     }
 }
